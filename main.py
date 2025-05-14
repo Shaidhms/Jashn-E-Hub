@@ -10,46 +10,44 @@ from pathlib import Path
 import calendar
 import csv
 
-# Set page configuration
+
 st.set_page_config(
     page_title="EventEase Planner",
     layout="wide"
 )
 
-# Create data directory if it doesn't exist
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 USER_DATA_FILE = DATA_DIR / "user_data.csv"
 
-# Function to save user data to CSV
+
 def save_user_data(user_data):
     file_exists = os.path.isfile(USER_DATA_FILE)
     
-    # Create headers for the CSV if file doesn't exist
+    
     fieldnames = ['name', 'email', 'phone', 'city', 'event_type', 'budget', 'location', 
                  'event_date', 'selected_services', 'num_guests', 'eco_preference', 'timestamp']
     
     with open(USER_DATA_FILE, mode='a', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         
-        # Write header if file is being created for the first time
+        
         if not file_exists:
             writer.writeheader()
         
-        # Add timestamp and write the data
+        
         user_data['timestamp'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         writer.writerow(user_data)
     
     return True
 
-# Load ML model
-# Load ML model
+
 @st.cache_resource
 def load_model():
     model_path = os.path.join("artifacts", "model.joblib")
     
     try:
-        # Check if file exists
+        
         if not os.path.exists(model_path):
             st.warning(f"Model file not found at {model_path}. Using rule-based recommendations instead.")
             return None
@@ -62,7 +60,7 @@ def load_model():
 
 model = load_model()
 
-# Sample data for demonstration
+
 service_providers = {
     'Arjun': {'services': ['catering', 'decoration'], 'rating': 4.7, 'location': 'Mumbai', 'budget_category': 'medium', 'eco_friendly': True},
     'Saanvi': {'services': ['catering', 'venue'], 'rating': 4.9, 'location': 'Delhi', 'budget_category': 'high', 'eco_friendly': True},
@@ -84,7 +82,7 @@ service_providers = {
     'Neha': {'services': ['venue', 'decoration', 'photography'], 'rating': 4.9, 'location': 'Pune', 'budget_category': 'medium+', 'eco_friendly': True},
 }
 
-# Define service costs by budget category
+
 service_costs = {
     'catering': {'low': 15000, 'medium': 30000, 'medium+': 40000, 'high': 60000},
     'venue': {'low': 30000, 'medium': 75000, 'medium+': 100000, 'high': 150000},
@@ -96,7 +94,7 @@ service_costs = {
     'priest': {'low': 5000, 'medium': 10000, 'medium+': 12000, 'high': 15000}
 }
 
-# Define possible event services based on event type
+
 event_services = {
     'wedding': ['catering', 'venue', 'decoration', 'photography', 'entertainment', 'transportation', 'wedding cards', 'priest'],
     'engagement': ['catering', 'venue', 'decoration', 'photography', 'entertainment'],
@@ -105,7 +103,7 @@ event_services = {
     'birthday': ['catering', 'venue', 'decoration', 'photography', 'entertainment']
 }
 
-# Sustainable alternatives for services
+
 sustainable_alternatives = {
     'catering': [
         'Use locally sourced, seasonal ingredients to reduce carbon footprint',
@@ -139,61 +137,57 @@ sustainable_alternatives = {
     ]
 }
 
-# Function to generate calendar with availability
 def generate_availability_calendar(provider_name, month=None, year=None):
     if month is None:
         month = datetime.date.today().month
     if year is None:
         year = datetime.date.today().year
     
-    # Get the calendar for the specified month and year
+    
     cal = calendar.monthcalendar(year, month)
     
-    # Generate random availability (in a real app, this would come from a database)
     available_dates = []
     for week in cal:
         for day in week:
-            if day != 0:  # Skip days that belong to other months
+            if day != 0:  
                 current_date = datetime.date(year, month, day)
-                if current_date >= datetime.date.today():  # Only future dates
-                    if random.random() > 0.4:  # 60% chance of being available
+                if current_date >= datetime.date.today():  
+                    if random.random() > 0.4:  
                         available_dates.append(day)
     
     return cal, available_dates
 
-# Function to parse the services from the original data file
+
 def parse_services_from_data():
-    # Extract the services from the paste.txt data
+    
     services_data = []
     for line in st.session_state.get('raw_data', []):
-        # Clean the string and extract services
         cleaned = line.replace("'", "").strip()
         services = [s.strip() for s in cleaned.split(',')]
         services_data.append(services)
     return services_data
-
-# Function to predict vendor suitability using ML model
+    
 def predict_vendor_suitability(model, event_type, budget, location, services, provider):
     if model is None:
-        # Fallback to rule-based matching if model isn't loaded
+        
         return get_provider_match_score(event_type, budget, location, services, provider)
     
     try:
-        # Add the event_services column that was missing
+        
         features = {
             'event_type': event_type,
             'budget': budget.lower(),
             'location': location,
-            'service_match': 0,          # dummy
-            'provider_rating': provider['rating'],  # Actual rating from provider
-            'eco_friendly': 1 if provider['eco_friendly'] else 0,  # Convert boolean to integer
-            'rating': provider['rating'],  # The model specifically requires this column
-            'registration_number': 12345,  # Placeholder value
-            'service': services[0] if services else 'general',  # Use the first selected service as a placeholder
-            'event_services': ', '.join(services)  # Add the missing column
+            'service_match': 0,         
+            'provider_rating': provider['rating'],  
+            'eco_friendly': 1 if provider['eco_friendly'] else 0,  
+            'rating': provider['rating'],  
+            'registration_number': 12345,  
+            'service': services[0] if services else 'general', 
+            'event_services': ', '.join(services)  
         }
         
-        # Convert to DataFrame for model prediction
+        
         df = pd.DataFrame([features], columns=[
             'event_type',
             'budget',
@@ -204,55 +198,53 @@ def predict_vendor_suitability(model, event_type, budget, location, services, pr
             'rating',
             'registration_number',
             'service',
-            'event_services'  # Include in the columns list
+            'event_services'  
         ])
         
-        # Predict suitability
+        
         suitability_score = model.predict(df)[0]
         return suitability_score
     except Exception as e:
         st.error(f"Error using model for prediction: {e}")
-        # Fallback to rule-based matching
+        
         return get_provider_match_score(event_type, budget, location, services, provider)
 
-# Function to calculate match score based on rules
+
 def get_provider_match_score(event_type, budget, location, services, provider):
     score = 0
     
-    # Location match
+    
     if provider['location'] == location:
         score += 3
-    
-    # Budget match
+
     if provider['budget_category'] == budget.lower():
         score += 2
     
-    # Services match
+    
     service_match = sum(1 for s in services if s in provider['services'])
     score += service_match
     
-    # Rating bonus
-    score += (provider['rating'] - 4) * 2  # 0.1 in rating = 0.2 in score
     
-    # Eco-friendly bonus
+    score += (provider['rating'] - 4) * 2  
+    
+
     if provider['eco_friendly']:
         score += 1
     
     return score
 
-# Function to get providers based on services, budget, and location
+
 def get_providers_recommendation(event_type, budget, location, selected_services):
-    # For actual implementation, this would use the ML model
-    # For now, we'll filter based on matching criteria
+    
     
     matching_providers = []
     
     budget_category = budget.lower()
     
-    # Get all providers that have at least one of the selected services
+    
     for name, info in service_providers.items():
         if any(service in info['services'] for service in selected_services):
-            # Calculate match score for sorting
+            
             if model:
                 match_score = predict_vendor_suitability(model, event_type, budget, location, selected_services, info)
             else:
@@ -268,11 +260,11 @@ def get_providers_recommendation(event_type, budget, location, selected_services
                 'match_score': match_score
             })
     
-    # Sort by match score
+   
     matching_providers.sort(key=lambda x: x['match_score'], reverse=True)
     return matching_providers
 
-# Function to calculate cost breakdown
+
 def calculate_cost_breakdown(selected_services, budget):
     cost_breakdown = {}
     total_cost = 0
@@ -284,27 +276,27 @@ def calculate_cost_breakdown(selected_services, budget):
     
     return cost_breakdown, total_cost
 
-# Function to get upgrade suggestions
+
 def get_upgrade_suggestions(providers, budget, selected_services):
     current_budget = budget.lower()
     
-    # Define the next budget level
+    
     budget_levels = ['low', 'medium', 'medium+', 'high']
     current_index = budget_levels.index(current_budget)
     
     suggestions = []
     
-    # If not already at the highest budget level
+    
     if current_index < len(budget_levels) - 1:
         next_budget = budget_levels[current_index + 1]
         
-        # Calculate additional cost
+    
         current_cost = sum(service_costs.get(service, {}).get(current_budget, 0) for service in selected_services)
         upgraded_cost = sum(service_costs.get(service, {}).get(next_budget, 0) for service in selected_services)
         
         additional_cost = upgraded_cost - current_cost
         
-        # Find upgraded providers
+        
         upgraded_providers = [p for p in providers if p['budget'] == next_budget]
         
         if upgraded_providers:
@@ -316,7 +308,7 @@ def get_upgrade_suggestions(providers, budget, selected_services):
                 'service_improvements': []
             })
             
-            # Add specific service improvements
+
             for service in selected_services:
                 current_service_cost = service_costs.get(service, {}).get(current_budget, 0)
                 upgraded_service_cost = service_costs.get(service, {}).get(next_budget, 0)
@@ -331,28 +323,28 @@ def get_upgrade_suggestions(providers, budget, selected_services):
     
     return suggestions
 
-# Add raw data to session state (simulating the input from paste.txt)
+
 if 'raw_data' not in st.session_state:
     raw_data = [
         "wedding cards, entertainment, decoration",
         "entertainment, photography, catering, venue",
         "catering, venue, entertainment, transportation",
-        # Add more entries as needed
+        
     ]
     st.session_state['raw_data'] = raw_data
 
-# Main function to create the app
+
 def main():
     st.title("Jashn-E-Hub")
     st.markdown("### Find the perfect service providers for your event!")
     
-    # Create tabs for different sections
+    
     tab1, tab2, tab3, tab4 = st.tabs(["Plan Your Event", "Service Providers", "Cost Breakdown", "Sustainability"])
     
     with tab1:
         st.header("Event Details")
         
-        # User information collection
+        
         with st.expander("Your Information", expanded=True):
             col1, col2 = st.columns(2)
             with col1:
@@ -365,52 +357,52 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            # Event type selection
+            
             event_type = st.selectbox(
                 "Select Event Type",
                 ['wedding', 'engagement', 'corporate', 'house party', 'birthday']
             )
             
-            # Budget selection
+            
             budget = st.selectbox(
                 "Select Budget Category",
                 ['Low', 'Medium', 'Medium+', 'High']
             )
             
-            # Location selection
+            
             location = st.selectbox(
                 "Select Location",
                 ['Mumbai', 'Chennai', 'Pune', 'Delhi', 'Bangalore']
             )
             
         with col2:
-            # Date selection
+        
             event_date = st.date_input(
                 "Select Event Date",
                 datetime.date.today() + datetime.timedelta(days=30),
                 min_value=datetime.date.today()
             )
             
-            # Services selection based on event type
+            
             available_services = event_services.get(event_type, [])
             selected_services = st.multiselect(
                 "Select Required Services",
                 available_services,
-                default=available_services[:3]  # Default to first 3 services
+                default=available_services[:3]  
             )
             
-            # Number of guests
+            
             num_guests = st.slider("Number of Guests", 10, 500, 100)
             
-            # Eco-friendly preference
+            
             eco_preference = st.checkbox("Prefer eco-friendly options", value=True)
         
-        # Store selections in session state
+        
         if st.button("Find Providers"):
             if not user_name or not user_phone:
                 st.error("Please provide your name and phone number to proceed.")
             else:
-                # Save user data to CSV
+                
                 user_data = {
                     'name': user_name,
                     'email': user_email,
@@ -429,7 +421,7 @@ def main():
                 if save_success:
                     st.success("Your information has been saved!")
                 
-                # Store in session state for current session
+    
                 st.session_state['user_name'] = user_name
                 st.session_state['user_email'] = user_email
                 st.session_state['user_phone'] = user_phone
@@ -442,16 +434,16 @@ def main():
                 st.session_state['num_guests'] = num_guests
                 st.session_state['eco_preference'] = eco_preference
                 
-                # Calculate cost breakdown
+                
                 cost_breakdown, total_cost = calculate_cost_breakdown(selected_services, budget)
                 st.session_state['cost_breakdown'] = cost_breakdown
                 st.session_state['total_cost'] = total_cost
                 
-                # Get provider recommendations
+                
                 providers = get_providers_recommendation(event_type, budget, location, selected_services)
                 st.session_state['providers'] = providers
                 
-                # Get upgrade suggestions
+                
                 upgrade_suggestions = get_upgrade_suggestions(providers, budget, selected_services)
                 st.session_state['upgrade_suggestions'] = upgrade_suggestions
                 
@@ -463,7 +455,7 @@ def main():
         if 'providers' in st.session_state:
             providers = st.session_state['providers']
             
-            # Show upgrade suggestions if available
+            
             if 'upgrade_suggestions' in st.session_state and st.session_state['upgrade_suggestions']:
                 with st.expander("Upgrade your experience!", expanded=True):
                     suggestion = st.session_state['upgrade_suggestions'][0]
@@ -474,7 +466,7 @@ def main():
                         st.write(f"- {imp['details']}")
                     
                     if st.button("Upgrade Budget"):
-                        # Update the budget and recalculate everything
+                    
                         next_budget_index = ['low', 'medium', 'medium+', 'high'].index(st.session_state['budget'].lower()) + 1
                         new_budget = ['Low', 'Medium', 'Medium+', 'High'][next_budget_index]
                         
@@ -506,14 +498,14 @@ def main():
             else:
                 st.write(f"Found {len(providers)} providers matching your criteria:")
                 
-                # First sort by budget category to group providers
+                
                 budget_order = {'low': 0, 'medium': 1, 'medium+': 2, 'high': 3}
                 providers.sort(key=lambda x: (budget_order.get(x['budget'], 0), -x['rating']))
                 
                 current_budget = None
                 
                 for i, provider in enumerate(providers):
-                    # Add budget category header if changed
+                    
                     if provider['budget'] != current_budget:
                         current_budget = provider['budget']
                         st.subheader(f"{current_budget.capitalize()} Budget Providers")
@@ -529,7 +521,7 @@ def main():
                                 st.write("**Eco-Friendly:** Yes 🌱")
                             
                             if st.button(f"Contact {provider['name']}", key=f"contact_{i}"):
-                                # Save contact request to CSV
+                                
                                 contact_data = {
                                     'name': st.session_state.get('user_name', 'Unknown'),
                                     'email': st.session_state.get('user_email', 'Unknown'),
@@ -545,7 +537,7 @@ def main():
                                     'contacted_provider': provider['name']
                                 }
                                 
-                                # Create contacts directory if it doesn't exist
+                                
                                 CONTACTS_DIR = DATA_DIR / "contacts"
                                 CONTACTS_DIR.mkdir(exist_ok=True)
                                 CONTACTS_FILE = CONTACTS_DIR / f"contact_requests_{datetime.date.today().strftime('%Y%m%d')}.csv"
@@ -560,10 +552,10 @@ def main():
                                 st.info(f"Request sent to {provider['name']}. They will contact you soon!")
                         
                         with col2:
-                            # Show live calendar
+                            
                             st.write("**Availability Calendar:**")
                             
-                            # Let user select month/year for the calendar
+                            
                             today = datetime.date.today()
                             months = list(range(1, 13))
                             month_names = [calendar.month_name[m] for m in months]
@@ -584,12 +576,12 @@ def main():
                                     key=f"year_{i}"
                                 )
                             
-                            # Generate calendar with availability
+                            
                             cal, available_dates = generate_availability_calendar(
                                 provider['name'], selected_month, selected_year
                             )
                             
-                            # Display calendar
+                            
                             cal_html = "<table class='calendar'>"
                             cal_html += "<tr><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th></tr>"
                             
@@ -597,15 +589,15 @@ def main():
                                 cal_html += "<tr>"
                                 for day in week:
                                     if day == 0:
-                                        cal_html += "<td></td>"  # Empty cell for days not in month
+                                        cal_html += "<td></td>"  
                                     else:
-                                        # Check if date is available
+                                        
                                         current_date = datetime.date(selected_year, selected_month, day)
                                         is_available = day in available_dates
                                         is_today = current_date == today
                                         is_selected = current_date == st.session_state.get('event_date')
                                         
-                                        # Define cell style based on availability
+                                        
                                         if is_selected:
                                             cell_style = "selected-date"
                                         elif is_today:
@@ -621,7 +613,7 @@ def main():
                             
                             cal_html += "</table>"
                             
-                            # Add CSS for calendar
+                            
                             st.markdown("""
                             <style>
                             .calendar {
@@ -658,7 +650,7 @@ def main():
                             st.markdown(cal_html, unsafe_allow_html=True)
                             
                             if st.button(f"Book {provider['name']}", key=f"book_{i}"):
-                                # Save booking to CSV
+                                
                                 booking_data = {
                                     'name': st.session_state.get('user_name', 'Unknown'),
                                     'email': st.session_state.get('user_email', 'Unknown'),
@@ -673,7 +665,7 @@ def main():
                                     'booking_timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                                 }
                                 
-                                # Create bookings directory if it doesn't exist
+                                
                                 BOOKINGS_DIR = DATA_DIR / "bookings"
                                 BOOKINGS_DIR.mkdir(exist_ok=True)
                                 BOOKINGS_FILE = BOOKINGS_DIR / f"bookings_{datetime.date.today().strftime('%Y%m%d')}.csv"
@@ -696,30 +688,30 @@ def main():
             
             st.subheader(f"Estimated Budget: {st.session_state.get('budget', '')} Category")
             
-            # Create a pie chart of costs
+            
             if cost_breakdown:
                 fig, ax = plt.subplots(figsize=(10, 6))
                 labels = list(cost_breakdown.keys())
                 sizes = list(cost_breakdown.values())
                 
-                # Only include non-zero values
+                
                 non_zero_labels = [label for label, size in zip(labels, sizes) if size > 0]
                 non_zero_sizes = [size for size in sizes if size > 0]
                 
-                if non_zero_sizes:  # Check if there's any data to plot
+                if non_zero_sizes:  
                     colors = plt.cm.viridis(np.linspace(0, 0.9, len(non_zero_labels)))
                     wedges, texts, autotexts = ax.pie(
                         non_zero_sizes, 
-                        labels=None,  # We'll add our own labels
+                        labels=None,  
                         autopct='%1.1f%%',
                         startangle=90,
                         colors=colors
                     )
                     
-                    # Equal aspect ratio ensures that pie is drawn as a circle
+                    
                     ax.axis('equal')
                     
-                    # Add legend
+                    
                     ax.legend(
                         wedges, 
                         [f"{label} (₹{size:,})" for label, size in zip(non_zero_labels, non_zero_sizes)],
@@ -731,37 +723,37 @@ def main():
                     plt.title(f"Cost Breakdown - Total: ₹{total_cost:,}")
                     st.pyplot(fig)
                     
-                    # Table with detailed breakdown
+                    
                     st.subheader("Service Cost Details")
                     
-                    # Prepare the data for the table
+                    
                     table_data = []
                     for service, cost in cost_breakdown.items():
-                        if cost > 0:  # Only include services with costs
+                        if cost > 0:  
                             table_data.append({
                                 "Service": service.capitalize(),
                                 "Cost (₹)": f"₹{cost:,}",
                                 "Percentage": f"{(cost/total_cost)*100:.1f}%"
                             })
                     
-                    # Add total row
+                
                     table_data.append({
                         "Service": "**Total**",
                         "Cost (₹)": f"**₹{total_cost:,}**",
                         "Percentage": "**100.0%**"
                     })
                     
-                    # Display the table
+                    
                     st.table(table_data)
                     
-                    # Payment section
+                
                     st.subheader("Payment Options")
                     payment_method = st.radio(
                         "Select Payment Method",
                         ["Credit Card", "Debit Card", "UPI", "Bank Transfer", "Pay Later (EMI)"]
                     )
                     
-                    # Calculate booking amount (10% of total)
+                    
                     booking_amount = total_cost * 0.1
                     
                     st.write(f"**Booking Amount (10%):** ₹{booking_amount:,.2f}")
@@ -791,21 +783,21 @@ def main():
             else:
                 st.info("Consider these eco-friendly alternatives for your event planning:")
             
-            # Show sustainable alternatives for selected services
+            
             for service in selected_services:
                 if service in sustainable_alternatives:
                     with st.expander(f"Sustainable {service.capitalize()} Options", expanded=eco_preference):
                         for alternative in sustainable_alternatives[service]:
                             st.write(f"- {alternative}")
             
-            # Show carbon footprint estimation
+            
             st.subheader("Carbon Footprint Estimation")
             
-            # Calculate a rough estimate based on number of guests and services
-            base_carbon_per_guest = 7.5  # kg CO2 per guest for standard event
+            
+            base_carbon_per_guest = 7.5  
             eco_reduction_factor = 0.6 if eco_preference else 1.0
             
-            # Additional factors based on services
+            
             service_carbon_factors = {
                 'catering': 2.5,
                 'venue': 1.0,
@@ -820,10 +812,10 @@ def main():
             total_carbon = 0
             num_guests = st.session_state.get('num_guests', 100)
             
-            # Calculate base carbon footprint
+            
             base_carbon = num_guests * base_carbon_per_guest * eco_reduction_factor
             
-            # Add service-specific carbon
+            
             for service in selected_services:
                 service_factor = service_carbon_factors.get(service, 0.5)
                 service_carbon = num_guests * service_factor * eco_reduction_factor
@@ -831,33 +823,33 @@ def main():
             
             total_carbon += base_carbon
             
-            # Create a gauge chart for carbon footprint
+            
             fig, ax = plt.subplots(figsize=(10, 2))
             
-            # Define ranges
+            
             low_range = num_guests * 5  # Good
             medium_range = num_guests * 10  # Average
             high_range = num_guests * 15  # High
             
-            # Plot the gauge
+            
             gauge_range = np.linspace(0, high_range * 1.2, 100)
             ax.barh([0], [high_range * 1.2], color='#f8d7da', height=0.3)
             ax.barh([0], [medium_range], color='#fff3cd', height=0.3)
             ax.barh([0], [low_range], color='#d4edda', height=0.3)
             
-            # Add the pointer (triangle)
+            
             pointer_height = 0.4
             pointer_x = total_carbon
             triangle_y = [-pointer_height/2, 0, pointer_height/2]
             triangle_x = [pointer_x, pointer_x + pointer_height, pointer_x]
             ax.fill(triangle_x, triangle_y, color='black')
             
-            # Add labels
+            
             ax.text(low_range/2, -0.5, 'Low Impact', ha='center')
             ax.text((medium_range + low_range)/2, -0.5, 'Medium Impact', ha='center')
             ax.text((high_range + medium_range)/2, -0.5, 'High Impact', ha='center')
             
-            # Format the chart
+            
             ax.set_xlim(0, high_range * 1.2)
             ax.set_ylim(-1, 1)
             ax.set_yticks([])
@@ -872,8 +864,8 @@ def main():
             
             st.pyplot(fig)
             
-            # Carbon offset suggestion
-            offset_cost_per_kg = 0.5  # Cost in ₹ to offset 1 kg of CO2
+        
+            offset_cost_per_kg = 0.5  
             offset_cost = total_carbon * offset_cost_per_kg
             
             st.write(f"**Offset your event's carbon footprint for approximately ₹{offset_cost:,.0f}**")
@@ -881,7 +873,7 @@ def main():
             if st.button("Add Carbon Offset to Package"):
                 st.success(f"Carbon offset added to your package! Thank you for making your event carbon-neutral.")
                 
-            # Sustainable vendor recommendations
+            
             st.subheader("Sustainable Vendor Recommendations")
             
             if 'providers' in st.session_state:
@@ -895,7 +887,7 @@ def main():
                 else:
                     st.warning("No eco-friendly providers found for your criteria. Consider adjusting your requirements.")
 
-    # Add a footer
+    
     st.markdown("---")
     st.markdown("### Jashn-E-Hub - Your One-Stop Event Planning Solution")
     col1, col2, col3 = st.columns(3)
