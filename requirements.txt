@@ -1,7 +1,8 @@
-
 streamlit>=1.30.0
 scikit-learn>=1.2.0
 pandas
 numpy
 joblib
 matplotlib
+qrcode
+Pillow
