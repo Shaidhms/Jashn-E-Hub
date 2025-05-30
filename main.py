@@ -103,21 +103,22 @@ service_providers = {
 
 # Define budget ranges for display
 budget_ranges = {
-    '50K-1L': 'Economy (₹50,000-₹1,00,000)',
-    '1L-2L': 'Standard (₹1,00,000-₹2,00,000)',
-    '2L-3L': 'Premium (₹2,00,000-₹3,00,000)',
-    '3L-5L': 'Luxury (₹3,00,000-₹5,00,000)',  
-    '5L-10L': 'Ultra Luxury (₹5,00,000-₹10,00,000)',
-    '10L+': 'Elite (₹10,00,000+)'
+    '10K-30K': 'Economy (₹10,000-₹30,000)',
+    '30K-50K': 'Standard (₹30,000-₹50,000)',
+    '50K-1L': 'Premium (₹50,000-₹1,00,000)',
+    '1L-2L': 'Luxury (₹1,00,000-₹2,00,000)',  
+    '2L+': 'Ultra Luxury (₹2,00,000+)',
+    '5L+': 'Elite (₹5,00,000+)'
 }
 
+# Budget mapping (for compatibility with existing logic)
 budget_category_mapping = {
-    '50K-1L': 'low',
-    '1L-2L': 'medium',
-    '2L-3L': 'medium+', 
-    '3L-5L': 'high',
-    '5L-10L': 'high',
-    '10L+': 'very_high'
+    '10K-30K': 'low',
+    '30K-50K': 'medium',
+    '50K-1L': 'medium', 
+    '1L-2L': 'medium+',
+    '2L+': 'high',
+    '5L+': 'high'
 }
 
 # Define service costs by budget category
@@ -283,7 +284,7 @@ def calculate_cost_breakdown(selected_services, budget):
 def get_ml_based_upgrade_suggestions(event_type, location, selected_services, current_budget):
     """Generate upgrade suggestions using ML model predictions"""
     model = load_model()
-    budget_levels = ['50K-1L', '1L-2L', '2L-3L', '3L-5L', '5L-10L', '10L+']
+    budget_levels = ['10K-30K', '30K-50K', '50K-1L', '1L-2L', '2L+', '5L+']
 
     
     try:
